@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Code Reviewer Bot</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        textarea { width: 100%; height: 300px; margin-bottom: 10px; }
+        #review-output { white-space: pre-wrap; background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Paste Code for Review</h1>
+    
+    <form id="review-form">
+        <textarea name="code_input" placeholder="Paste your code here..."></textarea>
+        <button type="submit">Get Code Review</button>
+    </form>
+    
+    <h2>Review Output:</h2>
+    <div id="review-output">... Review will appear here ...</div>
+
+    <script>
+        document.getElementById('review-form').addEventListener('submit', function(e) {
+            e.preventDefault(); // Stop the standard form submission
+            const form = e.target;
+            const outputDiv = document.getElementById('review-output');
+            outputDiv.textContent = 'Analyzing code... please wait.';
+
+            // Send the form data to the /review route using JavaScript (Fetch API)
+            fetch('/review', {
+                method: 'POST',
+                body: new FormData(form)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display the review from the server
+                outputDiv.textContent = data.review;
+            })
+            .catch(error => {
+                outputDiv.textContent = 'Error: Could not connect to the server.';
+                console.error('Fetch error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
