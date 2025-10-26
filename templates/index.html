@@ -2,46 +2,142 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Code Reviewer Bot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent Code Review Assistant</title>
+    <!-- Load Tailwind CSS CDN for professional styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        textarea { width: 100%; height: 300px; margin-bottom: 10px; }
-        #review-output { white-space: pre-wrap; background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+        /* Use Inter font and ensure the background is a rich dark blue/black */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121827; /* Very dark background */
+        }
+        /* Style for the Code Block element (used for reviewed code snippets) */
+        .review-code-block {
+            background-color: #0d1117; /* GitHub dark theme background */
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+        }
     </style>
 </head>
-<body>
-    <h1>Paste Code for Review</h1>
-    
-    <form id="review-form">
-        <textarea name="code_input" placeholder="Paste your code here..."></textarea>
-        <button type="submit">Get Code Review</button>
-    </form>
-    
-    <h2>Review Output:</h2>
-    <div id="review-output">... Review will appear here ...</div>
+<body class="min-h-screen flex flex-col items-center p-4 sm:p-8">
 
+    <!-- Header / Title Bar -->
+    <header class="bg-blue-600 w-full max-w-xl py-4 px-8 rounded-t-xl shadow-2xl">
+        <h1 class="text-3xl font-extrabold text-white text-center">Code Review Assistant</h1>
+    </header>
+
+    <!-- Main Container Card (Dark Theme) -->
+    <div class="w-full max-w-xl bg-[#1f2937] shadow-2xl rounded-b-xl p-6 sm:p-10 space-y-8 border-t-2 border-blue-600">
+
+        <!-- Input Section -->
+        <section class="space-y-4">
+            <label for="code_input" class="block text-xl font-semibold text-gray-200">Paste Code for Review</label>
+            <textarea id="code_input" name="code_input" rows="10" 
+                      class="w-full p-4 border-2 border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500 text-base font-mono resize-y" 
+                      placeholder="Paste your code here... (Java, Python, JS, etc.)"></textarea>
+            
+            <button onclick="getCodeReview()" 
+                    class="w-full px-6 py-3 bg-blue-600 text-white font-bold text-lg rounded-lg hover:bg-blue-700 transition duration-150 ease-in-out shadow-md hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-70">
+                Get Code Review
+            </button>
+            
+            <!-- Loading Indicator -->
+            <div id="loading_indicator" class="mt-4 text-blue-400 font-medium hidden text-center">
+                Reviewing code... Please wait a moment.
+            </div>
+        </section>
+
+        <!-- Output Section -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-200 mb-3">Review Output:</h2>
+            <div id="review_output" 
+                 class="min-h-32 p-5 bg-gray-700 border border-gray-600 rounded-lg text-gray-300 whitespace-pre-wrap overflow-x-auto text-base leading-relaxed">
+                ... Review will appear here ...
+            </div>
+        </section>
+    </div>
+
+    <!-- JavaScript Logic -->
     <script>
-        document.getElementById('review-form').addEventListener('submit', function(e) {
-            e.preventDefault(); // Stop the standard form submission
-            const form = e.target;
-            const outputDiv = document.getElementById('review-output');
-            outputDiv.textContent = 'Analyzing code... please wait.';
+        async function getCodeReview() {
+            const codeInput = document.getElementById('code_input').value;
+            const reviewOutput = document.getElementById('review_output');
+            const loadingIndicator = document.getElementById('loading_indicator');
 
-            // Send the form data to the /review route using JavaScript (Fetch API)
-            fetch('/review', {
-                method: 'POST',
-                body: new FormData(form)
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Display the review from the server
-                outputDiv.textContent = data.review;
-            })
-            .catch(error => {
-                outputDiv.textContent = 'Error: Could not connect to the server.';
+            if (!codeInput.trim()) {
+                reviewOutput.innerHTML = '<p class="text-red-400">Please paste some code to review.</p>';
+                return;
+            }
+
+            // Show loading and clear previous output
+            loadingIndicator.classList.remove('hidden');
+            reviewOutput.innerHTML = '<p class="text-gray-400">Generating review...</p>';
+
+            try {
+                const formData = new FormData();
+                formData.append('code_input', codeInput);
+
+                const response = await fetch('/review', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Convert Markdown to HTML for professional display
+                    reviewOutput.innerHTML = convertMarkdownToHtml(data.review);
+                } else {
+                    reviewOutput.innerHTML = `<p class="text-red-400">Error: ${data.review || 'Failed to fetch review.'}</p>`;
+                }
+
+            } catch (error) {
+                reviewOutput.innerHTML = `<p class="text-red-400">Network Error: Could not connect to the server. ${error.message}</p>`;
                 console.error('Fetch error:', error);
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // Simple Markdown to HTML converter to display the structured review professionally
+        function convertMarkdownToHtml(markdownText) {
+            let html = markdownText;
+
+            // Convert Headers (### and ####)
+            html = html.replace(/^### (.*$)/gim, '</h3><h3 class="text-xl font-bold mt-4 mb-2 text-blue-400">$1');
+            html = html.replace(/^#### (.*$)/gim, '</h4><h4 class="text-lg font-semibold mt-3 mb-1 text-blue-300">$1');
+            
+            // Convert Bold (**text**)
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Convert Unordered Lists (* item)
+            html = html.replace(/^\* (.*$)/gim, '<li class="ml-4 list-disc">$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/s, '<ul class="pl-4 space-y-1 text-gray-300">$1</ul>');
+
+            // Convert Code Blocks (```) - using a custom dark style
+            html = html.replace(/```(.*?)\n([\s\S]*?)```/g, function(match, lang, code) {
+                const langDisplay = lang ? `<span class="text-xs font-semibold text-gray-300 bg-[#30363d] px-2 py-0.5 rounded-t-lg block">${lang.trim().toUpperCase()}</span>` : '';
+                return `<pre class="review-code-block p-3 rounded-lg overflow-x-auto my-3 text-sm">${langDisplay}<code class="block">${code.trim()}</code></pre>`;
             });
-        });
+
+            // Convert Code Spans (`text`)
+            html = html.replace(/`(.*?)`/g, '<code class="bg-gray-600 text-yellow-400 px-1 py-0.5 rounded text-sm">$1</code>');
+
+            // Handle newlines as paragraphs (after list/pre-block conversion)
+            html = html.replace(/\n\n/g, '</p><p class="mb-4 text-gray-300">');
+            html = html.replace(/\n/g, '<br>'); // Simple line breaks within paragraphs
+
+            // Wrap in a main paragraph tag if needed
+            if (!html.startsWith('<p')) {
+                html = `<p class="mb-4 text-gray-300">${html}`;
+            }
+            if (!html.endsWith('</p>')) {
+                html = `${html}</p>`;
+            }
+
+            return html;
+        }
     </script>
 </body>
 </html>
